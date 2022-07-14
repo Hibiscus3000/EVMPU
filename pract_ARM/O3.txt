@@ -1,0 +1,177 @@
+LeibnizFormula:
+        push    {r3, r4, r5, r6, r7, lr}
+        cmp     r0, #1
+        sbcs    r3, r1, #0
+        vpush.64        {d8, d9, d10}
+        blt     .L7
+        subs    r3, r0, #1
+        mov     r6, r0
+        mov     r7, r1
+        orrs    r3, r3, r1
+        vmov.f64        d10, #1.0e+0
+        beq     .L3
+        vmov.f64        d8, d10
+        movs    r4, #1
+        movs    r5, #0
+        vmov.f64        d9, #-1.0e+0
+.L6:
+        mov     r0, r4
+        mov     r1, r5
+        lsls    r3, r4, #31
+        bpl     .L11
+        bl      __aeabi_l2d
+        vmov    d16, r0, r1
+        adds    r4, r4, #1
+        vadd.f64        d16, d16, d16
+        adc     r5, r5, #0
+        cmp     r7, r5
+        it      eq
+        cmpeq   r6, r4
+        vadd.f64        d16, d16, d8
+        vdiv.f64        d17, d9, d16
+        vadd.f64        d10, d10, d17
+        bne     .L6
+.L3:
+        vmov.f64        d0, #4.0e+0
+        vmul.f64        d0, d10, d0
+        vldm    sp!, {d8-d10}
+        pop     {r3, r4, r5, r6, r7, pc}
+.L11:
+        bl      __aeabi_l2d
+        vmov    d16, r0, r1
+        adds    r4, r4, #1
+        vadd.f64        d16, d16, d16
+        adc     r5, r5, #0
+        cmp     r5, r7
+        it      eq
+        cmpeq   r4, r6
+        vadd.f64        d16, d16, d8
+        vdiv.f64        d17, d8, d16
+        vadd.f64        d10, d10, d17
+        bne     .L6
+        b       .L3
+.L7:
+        vldm    sp!, {d8-d10}
+        vmov.i64        d0, #0  @ float
+        pop     {r3, r4, r5, r6, r7, pc}
+fromCharToInt:
+        subs    r0, r0, #48
+        bx      lr
+getN:
+        push    {r3, r4, r5, lr}
+        mov     r5, r0
+        bl      strlen
+        mov     r4, r0
+        cbz     r0, .L16
+        add     lr, r5, #-1
+        movs    r0, #0
+        add     r4, r4, lr
+        mov     r1, r0
+.L15:
+        adds    r3, r0, r0
+        ldrb    r2, [lr, #1]!   @ zero_extendqisi2
+        adc     ip, r1, r1
+        adds    r3, r3, r3
+        adc     ip, ip, ip
+        adds    r3, r3, r0
+        adc     r1, r1, ip
+        subs    r2, r2, #48
+        adds    r3, r3, r3
+        adcs    r1, r1, r1
+        adds    r0, r2, r3
+        adc     r1, r1, r2, asr #31
+        cmp     lr, r4
+        bne     .L15
+        pop     {r3, r4, r5, pc}
+.L16:
+        mov     r1, r0
+        pop     {r3, r4, r5, pc}
+.LC0:
+        .ascii  "%f\012\000"
+printAnswer:
+        movw    r0, #:lower16:.LC0
+        movt    r0, #:upper16:.LC0
+        vmov    r2, r3, d0
+        b       printf
+main:
+        push    {r3, r4, r5, r6, r7, lr}
+        ldr     r5, [r1, #4] // *(r1 + 4) = argv[1]; 
+        vpush.64        {d8, d9, d10}
+        mov     r0, r5
+        bl      strlen
+        cmp     r0, #0
+        beq     .L28
+        subs    r5, r5, #1 // --r5 = --i;
+        movs    r4, #0 // r4 = 0; // N = 0;				// r5 = i
+        add     r0, r0, r5 // r0 = r0 + r5;				// r0 = N
+        mov     r6, r4 // r6 = r4 = N;						
+.L22:
+        adds    r3, r4, r4 // r3 = 2*r4 = 2*N;
+        ldrb    r1, [r5, #1]!   @ zero_extendqisi2 // ++r5; r1 = *r5; // r1 = charN[i];
+        adc     r2, r6, r6 // r2 = 2*r6 = 2*N;
+        adds    r3, r3, r3 r3 = 2*r3 = 4*N;
+        adcs    r2, r2, r2 // r2 = 2*r2 = 4*N;
+        adds    r3, r3, r4 // r3 = r3 + r4 = 5*N;
+        adc     r2, r6, r2 // r2 = r2 + r6 = 5*N;
+        subs    r1, r1, #48 // r1 -= 48;
+        adds    r3, r3, r3 // r3 = 10*N;
+        adcs    r2, r2, r2 // r2 = 10*N;
+        adds    r4, r1, r3 // N = 10*N + fromCharToInt(charN[i]);
+        adc     r6, r2, r1, asr #31 // r6 = 10*N + (fromCharToInt(charN[i]) >> 31);
+        cmp     r0, r5 
+        bne     .L22	// переход на след итерацию цикла
+        cmp     r4, #1									// r4 = N
+        sbcs    r3, r6, #0								// r3 = N	r6 = N проверка N на ноль
+        blt     .L28
+        subs    r3, r4, #1	// r3 = N - 1
+        vmov.f64        d10, #1.0e+0 // d10 = 1
+        orrs    r3, r3, r6 // сравнение N с нулем
+        beq     .L21 
+        vmov.f64        d8, d10 // d8 = d10 = 1 
+        movs    r5, #1 // r5 = 1
+        movs    r7, #0 // r7 = 0
+        vmov.f64        d9, #-1.0e+0 // d9 = -1
+.L26:
+        mov     r0, r5 // r0 = r5 = 1
+        mov     r1, r7 // r1 = r7
+        lsls    r3, r5, #31 // r3 = r5 << 31
+        bpl     .L32
+        bl      __aeabi_l2d
+        vmov    d16, r0, r1
+        adds    r5, r5, #1
+        vadd.f64        d16, d16, d16
+        adc     r7, r7, #0
+        cmp     r6, r7
+        it      eq
+        cmpeq   r4, r5
+        vadd.f64        d16, d16, d8
+        vdiv.f64        d17, d9, d16 // nextMember = - 1 / (2*i + 1)
+        vadd.f64        d10, d10, d17
+        bne     .L26
+.L21:
+        vmov.f64        d16, #4.0e+0
+        movw    r0, #:lower16:.LC0
+        movt    r0, #:upper16:.LC0
+        vmul.f64        d16, d10, d16
+        vmov    r2, r3, d16
+        bl      printf
+        movs    r0, #0
+        vldm    sp!, {d8-d10}
+        pop     {r3, r4, r5, r6, r7, pc}
+.L32:
+        bl      __aeabi_l2d									// d16 = r0 = i;
+        vmov    d16, r0, r1 
+        adds    r5, r5, #1 // ++r5;
+        vadd.f64        d16, d16, d16						// d16 = 2*i;
+        adc     r7, r7, #0
+        cmp     r7, r6										
+        it      eq
+        cmpeq   r5, r4
+        vadd.f64        d16, d16, d8						// 2*i + 1
+        vdiv.f64        d17, d8, d16						// d17 = nextMember = 1 / (2*i + 1);
+        vadd.f64        d10, d10, d17						// d10 = Pi += nextMember;
+        bne     .L26
+        b       .L21
+.L28:
+        vmov.i64        d10, #0 @ float
+        b       .L21

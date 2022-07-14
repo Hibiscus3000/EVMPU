@@ -1,0 +1,176 @@
+LeibnizFormula:
+        push    {r4, r5, r7, r8, r9, lr}
+        sub     sp, sp, #32 // sp -=32;
+        add     r7, sp, #0 // r7 = sp;
+        strd    r0, [r7] // *r7 = r0 = N;
+        mov     r2, #0 //  r2 = 0;
+        mov     r3, #0 // r3 = 0;
+        strd    r2, [r7, #24] // *(r7 + 24) = r2 = Pi;
+        vmov.i32        d16, #0  @ di // d16 = 0;
+        vstr.64 d16, [r7, #8]     @ int // *(r7 + 8) = d16 = 0; i = 0;
+        b       .L2
+.L5:
+        ldrd    r2, [r7, #8] // r2 = *(r7 + 8) = N;
+        and     r4, r2, #1 // r4 = (i % 2);
+        movs    r5, #0 // r5 = 0;
+        orrs    r3, r4, r5 // r3 = r4 || r5;
+        beq     .L3 // if (i % 2 == 0) -> L3
+        mov     r2, #0
+        mov     r3, #0
+        movt    r3, 49136
+        strd    r2, [r7, #16]
+        b       .L4
+.L3:
+        mov     r2, #0 // r2 = 0;
+        mov     r3, #0 // r3 = 0;
+        movt    r3, 16368 // r3 = 16368;?????????
+        strd    r2, [r7, #16] // *(r7 + 16) = r2 = 0;
+.L4:
+        ldrd    r0, [r7, #8] // r0 = *(r7 + 8) = i;
+        bl      __aeabi_l2d
+        vmov    d16, r0, r1 // d16 = r0 = i; r0 += r1;???????????
+        vadd.f64        d16, d16, d16 // d16 = d16 + d16 = 2*i;
+        vmov.f64        d17, #1.0e+0 // d17 = 1;
+        vadd.f64        d17, d16, d17 // d17 = 2*i + 1;
+        vldr.64 d18, [r7, #16] // d18 = *(r7 + 16) = 1; ?????? там же вроде 0 лежал
+        vdiv.f64        d16, d18, d17 // d16 = d18 / d17; nextMember = 1/(2*i + 1);
+        vstr.64 d16, [r7, #16] // *(r7 + 16) = d16 = 1/(2*i + 1);
+        vldr.64 d17, [r7, #24] //  d17 = *(r7 + 24) = Pi;
+        vldr.64 d16, [r7, #16] // d16 = *(r7 + 16) = 1/(2*i + 1);
+        vadd.f64        d16, d17, d16 // d16 = d17 + d16; Pi += nextMember;
+        vstr.64 d16, [r7, #24] // *(r7 + 24) = d16 = Pi;
+        ldrd    r2, [r7, #8] // r2 = *(r7 + 8) = i;
+        adds    r8, r2, #1 // ++i;
+        adc     r9, r3, #0
+        strd    r8, [r7, #8] // i = i + 1;
+.L2:
+        ldrd    r0, [r7, #8] // r0 = *(r7 + 8) = i; 
+        ldrd    r2, [r7] // r2 = *r7 = N;
+        cmp     r0, r2 // r0 - r2;
+        sbcs    r3, r1, r3 // r3 = r1 - r3;
+        blt     .L5 // i < N -> переход на следующую итерацию цикла for
+        vldr.64 d16, [r7, #24] // d16 = Pi;
+        vmov.f64        d17, #4.0e+0 // d17 = 4;
+        vmul.f64        d16, d16, d17 // Pi *= 4;
+        vstr.64 d16, [r7, #24] // *(r7 + 24) = Pi;
+        ldrd    r2, [r7, #24]
+        vmov    d16, r2, r3
+        vmov.f64        d0, d16
+        adds    r7, r7, #32
+        mov     sp, r7
+        pop     {r4, r5, r7, r8, r9, pc}
+fromCharToInt:
+        push    {r7}
+        sub     sp, sp, #12 // sp -= 12;
+        add     r7, sp, #0 // r7 = sp;
+        mov     r3, r0 // r3 = r0 = c;
+        strb    r3, [r7, #7] // *(r7 + 7) = r3 = c;
+        ldrb    r3, [r7, #7]    @ zero_extendqisi2 // r3 = *(r7 + 7) = c;
+        subs    r3, r3, #48 // r3 = r3 - 48 = c - 48;
+        mov     r0, r3 // r0 = r3 = c - 48;
+        adds    r7, r7, #12 // r7 += 12;
+        mov     sp, r7 // sp = r7;
+        ldr     r7, [sp], #4 // r7 = *r7; sp +=4;
+        bx      lr
+getN:
+        push    {r4, r5, r7, r8, r9, r10, fp, lr} // fp = r11;
+        sub     sp, sp, #56 // sp = sp - 56;
+        add     r7, sp, #0 // r7 = sp;
+        str     r0, [r7, #28] // *(r7 + 28) = r0 = charN;
+        ldr     r0, [r7, #28] // r0 = *(r7 + 28) = charN; 
+        bl      strlen
+        mov     r3, r0 // r3 = r0 = lengthN;
+        str     r3, [r7, #36] = *(r7 + 36) = r3 = lengthN;
+        vmov.i32        d16, #0  @ di // d16 = 0 ?
+        vstr.64 d16, [r7, #40]    @ int // *(r7 + 40) = 0; возможно, что это N
+        movs    r3, #0 // r3 = i = 0;
+        str     r3, [r7, #52] // *(r7 + 52) = r3 = i = 0;
+        b       .L10
+.L11:
+        ldrd    r0, [r7, #40] // r0 = *(r7 + 40);
+        mov     r2, r0 // r2 = r0 = N;
+        mov     r3, r1 // r3 = r1;
+        adds    r8, r2, r2 // r8 = 2*r2 = 2*N;
+        adc     r9, r3, r3 // r9 = 2*r3 = 2*r1;
+        adds    r3, r8, r8 // r3 = 2*r8 = 4*r2 = 4*N;
+        str     r3, [r7, #16] // *(r7 + 16) = r3 = 4*N;
+        adc     r3, r9, r9 // r3 = 2*r9 = 4*r1;
+        str     r3, [r7, #20] // *(r7 + 20) = r3 = 4*r1;
+        ldrd    r2, [r7, #16] // r2 = *(r7 + 16) = 4*N;
+        adds    r4, r2, r0 // r4 = r2 + r0 = 4*N + r0 = 5*N;
+        adc     r5, r3, r1 // r5 = r3 + r1 = 5*r1;
+        adds    r3, r4, r4 // r3 = 2*r4 = 10*N;
+        str     r3, [r7, #8] // *(r7 + 8) = r3 = 10*N;
+        adc     r3, r5, r5 // r3 = 2*r5 = 10*r1;
+        str     r3, [r7, #12] // *(r7 + 12) = r3 = 10*r1;
+        ldrd    r4, [r7, #8] // r4 = *(r7 + 8) = 10*N;
+        strd    r4, [r7, #40] // *(r7 + 40) = r4 = 10*N;
+        ldr     r3, [r7, #52] // r3 = *(r7 + 52) = i;
+        ldr     r2, [r7, #28] // r2 = *(r7 + 28) = charN;
+        add     r3, r3, r2 // r3 = r3 + r2 = charN + i;
+        ldrb    r3, [r3]       @ zero_extendqisi2 // r3 = *r3 = r3 = charN[i];
+        mov     r0, r3 // r0 = r3 = charN[i];
+        bl      fromCharToInt
+        mov     r3, r0 // r3 = fromCharToInt(charN[i]);
+        asrs    r2, r3, #31 // r2 = r3 << 31;
+        mov     r10, r3 // r10 = fromCharToInt(charN[i]);
+        mov     fp, r2 // r11 = r2 = fromCharToInt(charN[i]) << 31;
+        ldrd    r2, [r7, #40] // r2 = *(r7 + 40) = 10*N;
+        adds    r1, r2, r10 // r1 = r2 + r10 = 10*N + fromCharToInt(charN[i]); 
+        str     r1, [r7] // *r7 = r1 = 10*N + fromCharToInt(charN[i]);
+        adc     r3, r3, fp // r3 = r3 + r11 = fromCharToInt(charN[i]) << 31 + fromCharToInt(charN[i]);
+        str     r3, [r7, #4] // *(r7 + 4) = r3;
+        ldrd    r2, [r7] // r2 = *r7 = 10*N + fromCharToInt(charN[i]);
+        strd    r2, [r7, #40] // *(r7 + 40) = r2; N = 10*N + fromCharToInt(charN[i]);
+        ldr     r3, [r7, #52] // r3 = *(r7 + 52) = i;
+        adds    r3, r3, #1 // r3 = i + 1;
+        str     r3, [r7, #52] // i = i + 1;
+.L10:
+        ldr     r2, [r7, #52] // r2 = *(r7 + 52) = i;
+        ldr     r3, [r7, #36] // r3 = *(r7 + 36) = lengthN;
+        cmp     r2, r3 // r2 - r3
+        blt     .L11 // если (r2 < r3), то переход на следующую итерацию цикла for;
+        ldrd    r2, [r7, #40] // r2 = *(r7 + 40) = N;
+        mov     r0, r2 // r0 = r2 = N;
+        mov     r1, r3 // r1 = r3 = lengthN;
+        adds    r7, r7, #56							/*
+        mov     sp, r7									эпилог
+        pop     {r4, r5, r7, r8, r9, r10, fp, pc}	*/
+.LC0:
+        .ascii  "%f\012\000"
+printAnswer:
+        push    {r7, lr}
+        sub     sp, sp, #8
+        add     r7, sp, #0
+        vstr.64 d0, [r7]
+        ldrd    r2, [r7]
+        movw    r0, #:lower16:.LC0
+        movt    r0, #:upper16:.LC0
+        bl      printf
+        nop
+        adds    r7, r7, #8
+        mov     sp, r7
+        pop     {r7, pc}
+main:
+        push    {r7, lr} // Разместить в вершине стека регистры r7, lr, соответственно обновив указатель на вершину стека. lr = r14
+        sub     sp, sp, #24 // sp = sp - 24; sp = r13 (указатель на вершину стека),
+							// выделение места под указатель argv, int argc, long long N, double Pi
+        add     r7, sp, #0 // r7 = sp
+        str     r0, [r7, #4] // *(r7 + 4) = r0; // в r0 лежал argc
+        str     r1, [r7] // *r7 = r1; // в r1 лежал argv
+        ldr     r3, [r7] // r3 = *r7; r3 = argv
+        adds    r3, r3, #4 // r3 += 4;
+        ldr     r3, [r3] // r3 = *r3; // r3 = argv[1]
+        mov     r0, r3 // r0 = r3 = argv[1];
+        bl      getN // переход на указанный адрес, сохранение адреса возврата
+        strd    r0, [r7, #16] // *(r7 + 16) = r0;
+        ldrd    r0, [r7, #16] // r0 = *(r7 + 16);
+        bl      LeibnizFormula
+        vstr.64 d0, [r7, #8]
+        vldr.64 d0, [r7, #8]
+        bl      printAnswer
+        movs    r3, #0
+        mov     r0, r3
+        adds    r7, r7, #24
+        mov     sp, r7
+        pop     {r7, pc}
